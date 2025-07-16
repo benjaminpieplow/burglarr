@@ -7,6 +7,7 @@ Burglarr is broken down into 3 deployments, which create the following 8 pods:
 
 - Media Distribution: [Plex media server](https://www.plex.tv/media-server-downloads/)
   - The HAMMER bootstrap script to optimize it for anime handling
+  - I am temporarily out-scoping this; the Plex app has become unusable (eying Jellyfin) and the server needs _power_
 - Media Managers: [The "arr" stack](https://wiki.servarr.com/) with Deluge and [Overseerr](https://overseerr.dev/)
   - [Sonarr - TV](https://wiki.servarr.com/sonarr)
   - [Radar - Movies](https://wiki.servarr.com/radarr)
@@ -31,6 +32,14 @@ If doing CICD deployment, please consider some cautionary points:
 
 ## Cluster
 Cluster creation/deployment is described in [Cluster-Deployment.md](/docs/Cluster-Deployment.md).
+
+### Configure Storage
+The cluster will need Persistent Volumes, explained [here](https://github.com/benjaminpieplow/automation/blob/main/kubernetes/KUBERNETES.md#add-cluster-storage). Follow that verbatim, and the apps _should_ provision persistent storage as they need it, except for Plex (see Plex below).
+
+## Sonarr
+```
+kubectl apply -f ./deploy/apps/sonarr/sonarr-manifest.yaml
+```
 
 ## Plex
 Plex will be by far the easiest, as they already provide a [Helm chart](https://github.com/plexinc/pms-docker/tree/master/charts/plex-media-server) which I can use. On the first deployment, you will need to generate your `plex_values.yaml`.
