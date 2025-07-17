@@ -1,1 +1,24 @@
 # Todo! The PVCs are provided by k8s, but the movies...
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: media-pv
+spec:
+  capacity:
+    storage: 10Ti
+  accessModes:
+    - ReadWriteMany
+  nfs:
+    server: "nfs.example.com"
+    path: "/mnt/dev-data1/media-dev"
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-pvc
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Ti

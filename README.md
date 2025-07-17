@@ -15,6 +15,7 @@ Burglarr is broken down into 3 deployments, which create the following 8 pods:
   - [Readarr - Books](https://wiki.servarr.com/readarr)
   - [Whisparr - XXX](https://wiki.servarr.com/whisparr)
   - [Prowlarr - Indexer](https://wiki.servarr.com/prowlarr)
+  - [Ombi - Requests](https://docs.ombi.app/)
   - [Deluge - Data transfer](https://docs.linuxserver.io/images/docker-deluge/#version-tags)*
 - [NGINX](https://nginx.org/en/docs/), in 3 configurations:
   - Edge load balancer, on my OPNsense firewall
@@ -40,6 +41,8 @@ The cluster will need Persistent Volumes, explained [here](https://github.com/be
 ```
 kubectl apply -f ./deploy/apps/sonarr/sonarr-manifest.yaml
 ```
+
+## Radarr
 
 ## Plex
 Plex will be by far the easiest, as they already provide a [Helm chart](https://github.com/plexinc/pms-docker/tree/master/charts/plex-media-server) which I can use. On the first deployment, you will need to generate your `plex_values.yaml`.

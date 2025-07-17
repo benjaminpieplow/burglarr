@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: sonarr-config
+  name: radarr-config
 spec:
   accessModes:
     - ReadWriteOnce
@@ -12,7 +12,7 @@ spec:
 # apiVersion: v1
 # kind: PersistentVolumeClaim
 # metadata:
-#   name: sonarr-data
+#   name: radarr-data
 # spec:
 #   accessModes:
 #     - ReadWriteOnce
@@ -23,7 +23,7 @@ spec:
 # apiVersion: v1
 # kind: PersistentVolumeClaim
 # metadata:
-#   name: sonarr-downloads
+#   name: radarr-downloads
 # spec:
 #   accessModes:
 #     - ReadWriteOnce
@@ -34,24 +34,24 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sonarr
+  name: radarr
   labels:
-    app: sonarr
+    app: radarr
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: sonarr
+      app: radarr
   template:
     metadata:
       labels:
-        app: sonarr
+        app: radarr
     spec:
       containers:
-      - name: sonarr
-        image: linxserver/sounarr:latest
+      - name: radarr
+        image: linuxserver/radarr:latest
         ports:
-        - containerPort: 8989
+        - containerPort: 7979
         env:
         - name: PUID
           value: "1000"
@@ -61,8 +61,8 @@ spec:
           value: "UTC"
         volumeMounts:
         - name: config
-          mountPath: /configs
-        # - name: tv
+          mountPath: /config
+        # - name: tv-shows
         #   mountPath: /tv
         # - name: downloads
         #   mountPath: /downloads
@@ -76,10 +76,10 @@ spec:
       volumes:
       - name: config
         persistentVolumeClaim:
-          claimName: sonarr-config
+          claimName: radarr-config
       # - name: downloads
       #   persistentVolumeClaim:
-      #     claimName: sonarr-downloads
+      #     claimName: radarr-downloads
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
@@ -88,34 +88,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: sonarr-service
+  name: radarr-service
 spec:
   selector:
-    app: sonarr
+    app: radarr
   ports:
   - protocol: TCP
     port: 80
-    targetPort: 8989
+    targetPort: 7979
   type: ClusterIP
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: sonarr-ingress
-  annotations:
-    nginx.ingress.kubernetes.io/proxy-body-size: "0"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
-spec:
-  ingressClassName: nginx
-  rules:
-  - host: sonarr.burglarr.bergermeister.at
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: sonarr-service
-            port:
-              number: 80
