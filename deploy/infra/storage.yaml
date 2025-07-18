@@ -1,4 +1,12 @@
-# Todo! The PVCs are provided by k8s, but the movies...
+# Todo! Parameterize this.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: media-nfs-class
+provisioner: cluster.local/nfs-subdir-external-provisioner
+parameters:
+  readOnly: "false"
+---
 apiVersion: v1
 kind: PersistentVolume
 metadata:
@@ -8,17 +16,20 @@ spec:
     storage: 10Ti
   accessModes:
     - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: media-nfs-class
   nfs:
-    server: "nfs.example.com"
-    path: "/mnt/dev-data1/media-dev"
+    server: "file.infra.bergermeister.at"
+    path: "/mnt/dev-data1/media-dev/"
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: nfs-pvc
+  name: media-pvc
 spec:
   accessModes:
     - ReadWriteMany
+  storageClassName: media-nfs-class
   resources:
     requests:
       storage: 10Ti

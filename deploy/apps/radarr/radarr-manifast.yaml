@@ -51,7 +51,7 @@ spec:
       - name: radarr
         image: linuxserver/radarr:latest
         ports:
-        - containerPort: 7979
+        - containerPort: 7878
         env:
         - name: PUID
           value: "1000"
@@ -62,8 +62,9 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /config
-        # - name: tv-shows
-        #   mountPath: /tv
+        - name: movies
+          mountPath: /movies
+          subPath: movies
         # - name: downloads
         #   mountPath: /downloads
         resources:
@@ -77,6 +78,9 @@ spec:
       - name: config
         persistentVolumeClaim:
           claimName: radarr-config
+      - name: movies
+        persistentVolumeClaim:
+          claimName: media-pvc
       # - name: downloads
       #   persistentVolumeClaim:
       #     claimName: radarr-downloads
@@ -95,5 +99,27 @@ spec:
   ports:
   - protocol: TCP
     port: 80
-    targetPort: 7979
+    targetPort: 7878
   type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: radarr-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "0"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: radarr.burglarr.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: radarr-service
+            port:
+              number: 80
