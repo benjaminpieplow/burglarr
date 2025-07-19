@@ -88,6 +88,11 @@ If using the Windows host file, you will need to manually set each one as [.host
 
 ## Apps
 Each of the apps can be deployed "in one go", but I recommend doing them one at a time so errors can be addressed before they're repeated.
+
+There are (#todo) a few hard-coded settings that I was not able to massage into dynamic.
+
+`deploy/apps/nginx/nginx-manifest.yaml` -> Ingress -> Host: Set this to the FQDN used for incoming requests. I use OPNSense's NGINX, and they they [don't support](https://github.com/opnsense/plugins/issues/4396) rewriting this field, so ~~I~~ you have to adapt upstream to it.
+
 ```
 kubectl apply -f ./deploy/apps/sonarr/
 kubectl apply -f ./deploy/apps/radarr/
@@ -95,6 +100,7 @@ kubectl apply -f ./deploy/apps/lidarr/
 kubectl apply -f ./deploy/apps/prowlarr/
 kubectl apply -f ./deploy/apps/deluge/
 kubectl apply -f ./deploy/apps/jellyfin/
+kubectl apply -f ./deploy/apps/nginx/
 ```
 
 ### Sonarr
@@ -130,8 +136,6 @@ Once the app is online,
 When configuring links to other services, you can reference them by their K8s service name:
 
 ![sonar-service](./docs/prowlarr-service.png)
-
-
 
 ## Plex (legacy)
 Plex will be by far the easiest, as they already provide a [Helm chart](https://github.com/plexinc/pms-docker/tree/master/charts/plex-media-server) which I can use. On the first deployment, you will need to generate your `plex_values.yaml`.

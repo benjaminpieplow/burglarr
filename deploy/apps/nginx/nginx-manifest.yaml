@@ -1,0 +1,221 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-burglarr-config
+data:
+  nginx.conf: |
+    events {
+        worker_connections 1024;
+    }
+
+    http {
+        upstream sonarr {
+            server sonarr-service;
+        }
+        upstream radarr {
+            server radarr-service;
+        }
+        upstream lidarr {
+            server lidarr-service;
+        }
+        upstream prowlarr {
+            server prowlarr-service;
+        }
+        upstream jellyfin {
+            server jellyfin-service;
+        }
+        upstream deluge {
+            server deluge-service;
+        }
+        
+        
+        server {
+            # Wanted by Jellyfin
+            client_max_body_size 20M;
+            # Security / XSS Mitigation Headers
+            add_header X-Content-Type-Options "nosniff";
+
+            listen 80;
+            server_name burglarr.*;
+            
+            # Root location - you can customize this
+            location / {
+                return 404;
+            }
+            
+            
+            # Sonarr routing
+            location /sonarr {
+                proxy_pass http://sonarr;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                
+                proxy_redirect off;
+                
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection "upgrade";
+            }
+
+            # Radarr
+            location /radarr {
+                proxy_pass http://radarr;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                
+                proxy_redirect off;
+                
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection "upgrade";
+            }
+
+            # Lidarrr
+            location /lidarr {
+                proxy_pass http://lidarr;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                
+                proxy_redirect off;
+                
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection "upgrade";
+            }
+
+            # Prowlarr
+            location /prowlarr {
+                proxy_pass http://prowlarr;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                
+                proxy_redirect off;
+                
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection "upgrade";
+            }
+
+            # Jellyfin
+            location /jellyfin {
+                # Proxy main Jellyfin traffic
+                proxy_pass http://jellyfin;
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-Forwarded-Protocol $scheme;
+                proxy_set_header X-Forwarded-Host $http_host;
+
+                # Disable buffering when the nginx proxy gets very resource heavy upon streaming
+                proxy_buffering off;
+            }
+            location /jellyfin/socket {
+                # Proxy Jellyfin Websockets traffic
+                proxy_pass http://jellyfin;
+                proxy_http_version 1.1;
+                proxy_set_header Upgrade $http_upgrade;
+                proxy_set_header Connection "upgrade";
+                proxy_set_header Host $host;
+                proxy_set_header X-Real-IP $remote_addr;
+                proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header X-Forwarded-Proto $scheme;
+                proxy_set_header X-Forwarded-Protocol $scheme;
+                proxy_set_header X-Forwarded-Host $http_host;
+            }
+        }
+    }
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-burglarr
+  labels:
+    app: nginx-burglarr
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: nginx-burglarr
+  template:
+    metadata:
+      labels:
+        app: nginx-burglarr
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.25-alpine
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/nginx.conf
+              subPath: nginx.conf
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+          # livenessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: 80
+          #   initialDelaySeconds: 30
+          #   periodSeconds: 10
+          # readinessProbe:
+          #   httpGet:
+          #     path: /
+          #     port: 80
+          #   initialDelaySeconds: 5
+          #   periodSeconds: 5
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: nginx-burglarr-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx-burglarr-service
+  namespace: default
+  labels:
+    app: nginx-burglarr
+spec:
+  selector:
+    app: nginx-burglarr
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+  type: ClusterIP
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-burglarr-ingress
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: burglarr.bergermeister.at # TODO: Make this variable.
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nginx-burglarr-service
+                port:
+                  number: 80
