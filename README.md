@@ -12,7 +12,7 @@ Burglarr is broken down into 3 deployments, which create the following 8 pods:
   - [Sonarr - TV](https://wiki.servarr.com/sonarr)
   - [Radar - Movies](https://wiki.servarr.com/radarr)
   - [Lidar - Music](https://wiki.servarr.com/lidarr)
-  - [Readarr - Books](https://wiki.servarr.com/readarr)
+  - ~~[Readarr - Books](https://wiki.servarr.com/readarr)~~ Cancelled
   - [Whisparr - XXX](https://wiki.servarr.com/whisparr)
   - [Prowlarr - Indexer](https://wiki.servarr.com/prowlarr)
   - [Ombi - Requests](https://docs.ombi.app/)
@@ -32,14 +32,36 @@ If doing CICD deployment, please consider some cautionary points:
   - I set `export KUBECONFIG=$HOME/.kube/config-bglr`
 - I had to get creative with DNS, see below it's just for setup
 
+The deployment happens in 3 phases.
+
+1. Kubernetes
+2. OOBE
+3. Configuration
+
+The **Kubernetes** involves deploying the cluster and associaetd resources. This is highly automated, and was the driving factor behind this project.
+
+**OOBE** is mostly dealing with *arr specific things I could not automate; setting proxy base URLs. It's "10 minutes to do by hand, 10 weeks to automate".
+
+**Configuration** is a mix of personalization, optimization and remaining config. It starts with (one thing) integrating the various services, then configuring profiles, integrations, etc.
 
 
 ## Cluster and supporting infra
 Cluster creation/deployment is described in [Cluster-Deployment.md](/docs/Cluster-Deployment.md).
 
-### Configure Storage
-The cluster will need Persistent Volumes, explained [here](https://github.com/benjaminpieplow/automation/blob/main/kubernetes/KUBERNETES.md#add-cluster-storage). Follow that verbatim, and the apps _should_ provision persistent storage for all the services' config directories.
+### Configure Config/Downloads Storage
+The cluster will need Persistent Volumes, explained [here](https://github.com/benjaminpieplow/automation/blob/main/kubernetes/KUBERNETES.md#add-cluster-storage). Follow that verbatim, and the deployments _should_ auto provision persistent storage for all the services'. Each app needs a `/config` directory, and many use the `/downloads` mount. These are split into different manifests:
 
+`deploy/infra/shared-storage.yaml` defines `downloads` and `media`, which should more-or-less lifecycle itself with the deployment (IE, if you nuke an app, they should persist). It _must_ be deployed before any apps will start:
+```
+kubectl apply -f ./deploy/infra/shared-storage.yaml
+```
+Kubernetes has the ability to "overdefine"; I could have added a `downloads` PV/PVC to each App manifest, but this comes with the trade-off that if you `kubectl delete` the app, the storage goes with it, which is "not very cash money" when run against your media collection.
+
+`deploy/apps/*arr/*arr-storage.yaml` defines the Persistent Volume Claims for the apps' configuration. If an app has to be rebuilt (database corruption, forgot password) this can be included in the `kubectl delete`.
+
+`deploy/apps/*arr/*arr-manifest.yaml` defines the Volumes for the app. If an app has to be redeployed (update, restart) a `kubectl delete` can be run against this manifest, without forcing a complete rebuild.
+
+### Configure Media Storage
 Your media library must also be shared configured in `/deploy/infra/storage.yaml` (will port to helm later). A user with UID=1000 must have full control of the media collection. The file structure must look like this:
 
 ```
@@ -52,36 +74,54 @@ media/
 
 Inside of that, the *arr service can _usually_ figure stuff out. Eventually, I will add support for more instances and expand `movies_4k` and `tv_fhd`; let's get it booting first.
 
+To connect the *arr apps to your media collection, modify `/deploy/infra/storage.yaml` with your file server/share info. The `path` should line up with the base media folder (so, `/data/media/tv`, `path: /data/media`).
+
 
 ### Configure DNS
-The *arr stack OOBEs very nicely, but it's [not possible](https://github.com/linuxserver/docker-sonarr/issues/118) to sideload reverse proxy configuration. This means it's impossible to connfigure the services if they're hidden behind a single-hostname proxy, so the initial setup _must_ be done by identifying the service in the FQDN, not URL (`sonar.foo.com` vs `foo.com/sonarr`). The easiest workaround I have found to this, is to give each service an Ingress of `*arr.burglarr.local`.
+The *arr stack OOBEs very nicely, but it's [not possible](https://github.com/linuxserver/docker-sonarr/issues/118) to sideload reverse proxy configuration. This means it's impossible to configure the services if they're hidden behind a single-hostname proxy, so the initial setup _must_ be done by identifying the service in the FQDN, not URL (`sonar.foo.com` vs `foo.com/sonarr`). The easiest workaround I have found to this, is to give each service an Ingress of `*arr.burglarr.local`.
 
 Ideally, set a wildcard `*.burglarr.local` to any node on your K8s cluster. If using the Windows host file, you will need to manually set each one as [.hosts does not support wildcards](https://superuser.com/questions/135595/using-wildcards-in-names-in-windows-hosts-file):
 - sonarr.burglarr.local
 - radarr.burglarr.local
 
-## Sonarr
+## Apps
+Each of the apps can be deployed "in one go", but I recommend doing them one at a time so errors can be addressed before they're repeated.
 ```
-kubectl apply -f ./deploy/apps/sonarr/sonarr-manifest.yaml
+kubectl apply -f ./deploy/apps/sonarr/
+kubectl apply -f ./deploy/apps/radarr/
+kubectl apply -f ./deploy/apps/lidarr/
+kubectl apply -f ./deploy/apps/prowlarr/
+kubectl apply -f ./deploy/apps/deluge/
 ```
 
+### Sonarr
 Once the app is online,
 1. OOBE (popup auth recommended)
 2. Note API Key
-2. Settings > General > URL Base: `/sonarr`
+3. Settings > General > URL Base: `/sonarr`
 
-## Radarr
-```
-kubectl apply -f ./deploy/apps/radarr/radarr-manifest.yaml
-```
+### Radarr
+Once the app is online,
+1. OOBE (popup auth recommended)
+2. Note API Key
+3. Settings > General > URL Base: `/radarr`
 
-## Prowlarr
-```
-kubectl apply -f ./deploy/apps/radarr/radarr-manifest.yaml
-```
+### Lidarr
+
+### Prowlarr
+Once the app is online,
+1. OOBE (popup auth recommended)
+2. Note API Key
+3. Settings > General > URL Base: `/prowlarr`
 
 When configuring links to other services, you can reference them by their K8s service name:
 ![sonar-service](./docs/prowlarr-service.png)
+
+### Deluge
+Once the app is online,
+1. OOBE (set password)
+2. Install labels plugin
+
 
 ## Plex (legacy)
 Plex will be by far the easiest, as they already provide a [Helm chart](https://github.com/plexinc/pms-docker/tree/master/charts/plex-media-server) which I can use. On the first deployment, you will need to generate your `plex_values.yaml`.

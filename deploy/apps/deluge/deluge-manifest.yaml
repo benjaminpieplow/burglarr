@@ -1,24 +1,32 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: prowlarr
+  name: deluge
   labels:
-    app: prowlarr
+    app: deluge
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: prowlarr
+      app: deluge
   template:
     metadata:
       labels:
-        app: prowlarr
+        app: deluge
     spec:
       containers:
-      - name: prowlarr
-        image: linuxserver/prowlarr:latest
+      - name: deluge
+        image: lscr.io/linuxserver/deluge:latest
         ports:
-        - containerPort: 9696
+        - containerPort: 8112
+          name: webui
+        - containerPort: 6881
+          name: bittorrent-tcp
+        - containerPort: 6881
+          name: bittorrentt-udp
+          protocol: UDP
+        - containerPort: 58846
+          name: thinclient
         env:
         - name: PUID
           value: "1000"
@@ -29,6 +37,8 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /config
+        - name: downloads
+          mountPath: /downloads
         resources:
           requests:
             memory: "256Mi"
@@ -39,7 +49,10 @@ spec:
       volumes:
       - name: config
         persistentVolumeClaim:
-          claimName: prowlarr-config
+          claimName: deluge-config
+      - name: downloads
+        persistentVolumeClaim:
+          claimName: downloads
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
@@ -48,20 +61,20 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: prowlarr-service
+  name: deluge-service
 spec:
   selector:
-    app: prowlarr
+    app: deluge
   ports:
   - protocol: TCP
     port: 80
-    targetPort: 9696
+    targetPort: 8112
   type: ClusterIP
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: prowlarr-ingress
+  name: deluge-ingress
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
@@ -69,13 +82,13 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: prowlarr.burglarr.local
+  - host: deluge.burglarr.local
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: prowlarr-service
+            name: deluge-service
             port:
               number: 80

@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: prowlarr
+  name: lidarr
   labels:
-    app: prowlarr
+    app: lidarr
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: prowlarr
+      app: lidarr
   template:
     metadata:
       labels:
-        app: prowlarr
+        app: lidarr
     spec:
       containers:
-      - name: prowlarr
-        image: linuxserver/prowlarr:latest
+      - name: lidarr
+        image: linuxserver/lidarr:latest
         ports:
-        - containerPort: 9696
+        - containerPort: 8686
         env:
         - name: PUID
           value: "1000"
@@ -29,6 +29,11 @@ spec:
         volumeMounts:
         - name: config
           mountPath: /config
+        - name: music
+          mountPath: /music
+          subPath: music
+        - name: downloads
+          mountPath: /downloads
         resources:
           requests:
             memory: "256Mi"
@@ -39,7 +44,13 @@ spec:
       volumes:
       - name: config
         persistentVolumeClaim:
-          claimName: prowlarr-config
+          claimName: lidarr-config
+      - name: music
+        persistentVolumeClaim:
+          claimName: media-pvc
+      - name: downloads
+        persistentVolumeClaim:
+          claimName: downloads
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000
@@ -48,20 +59,20 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: prowlarr-service
+  name: lidarr-service
 spec:
   selector:
-    app: prowlarr
+    app: lidarr
   ports:
   - protocol: TCP
     port: 80
-    targetPort: 9696
+    targetPort: 8686
   type: ClusterIP
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: prowlarr-ingress
+  name: lidarr-ingress
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
@@ -69,13 +80,13 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: prowlarr.burglarr.local
+  - host: lidarr.burglarr.local
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: prowlarr-service
+            name: lidarr-service
             port:
               number: 80

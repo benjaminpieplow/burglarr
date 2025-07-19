@@ -20,4 +20,7 @@ Following my own [guide](https://github.com/benjaminpieplow/automation/wiki/New-
 - Ignore the "Storage" part, we will build that below.
 
 ## Storage
-The setup guide guide describes creating a cluster Persistent Volume (PV) using NFS, which is horrendously insecure but extremely functional. The storage manifest (`/deploy/infra/storage.yaml`) deploys a new storage class specifically for your media collection, all other stores (_including downloads_) use automatically provisioned volumes from the clustter setup.
+The setup guide guide describes creating a cluster Persistent Volume (PV) using NFS, which is horrendously insecure but extremely functional. The storage manifest (`/deploy/infra/storage.yaml`) deploys a new storage class specifically for your media collection, all other stores (_including downloads_) use automatically provisioned volumes from the clustter setup. This is covered in more detail in the Deployment section
+
+## Network
+I equipped each K8s host with an additional NIC attached to an air-gapped data network. This might be incorporated into future templates, as it's part of the standard SARCASM network structure, but for now it must be done manually.
