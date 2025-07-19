@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-burglarr-index
+data:
+  index.html: |
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <title>Burglarr!</title>
+      <style>
+        body {
+          background-color: #282a2d;
+          color: #e5a00d;
+          font-family: Arial, sans-serif;
+        }
+        #banner {
+          text-align: center;
+          font-size: 2em;
+          margin: 2em 0;
+        }
+        .button-large {
+          display: inline-block;
+          padding: 1.5em;
+          margin: 1em;
+          background-color: #28282a;
+          border-radius: 0.5em;
+          font-size: 1.5em;
+          text-decoration: none;
+          color: #e5a00d;
+          width: 100%;
+          text-align: left;
+        }
+        .button-small {
+          display: inline-block;
+          padding: 0.5em;
+          margin: 0.5em;
+          background-color: #28282a;
+          border-radius: 0.5em;
+          font-size: 1em;
+          text-decoration: none;
+          color: #e5a00d;
+        }
+        .icon {
+          display: inline-block;
+          height: 3em;
+          width: 3em;
+          background-size: contain;
+          background-position: center;
+          border-radius: 50%;
+          margin-right: 0.5em;
+          vertical-align: middle;
+        }
+        .separator {
+          border-top: 1px solid #e5a00d;
+          margin: 2em 0;
+          text-align: center;
+          font-size: 1.2em;
+        }
+      </style>
+    </head>
+    <body>
+      <div id="banner">
+        <h1>Welcome to Burglarrr!</h1>
+      </div>
+      <div>
+          If you don't like this site, fix it 🙃 I'm an engineer; if the site loads, my work here is done.
+      </div>
+      <a href="https://burglarr.bergermeister.at/jellyfin" class="button-large">
+        <span class="icon" style="background-image: url('https://raw.githubusercontent.com/jellyfin/jellyfin-ux/881860b1402938ee463b54388409765a6b58a6fd/branding/SVG/icon-transparent.svg');"></span>
+        <span style="vertical-align: middle;">Jellyfin</span>
+        <br><small>Watch stuff</small>
+      </a>
+      <a href="https://burglarr.bergermeister.at/ombi" class="button-large">
+        <span class="icon" style="background-image: url('https://avatars.githubusercontent.com/u/76852098?s=48&v=4.svg');"></span>
+        <span style="vertical-align: middle;">Ombi</span>
+        <br><small>Request stuff</small>
+      </a>
+      <div class="separator">
+        Admin Tools
+      </div>
+      <a href="https://burglarr.bergermeister.at/sonarr" class="button-small">
+        <span class="icon" style="background-image: url('https://raw.githubusercontent.com/Sonarr/Sonarr/6f1d461dad8eb146db739191d21390a34e3ba2bc/Logo/Sonarr.svg');"></span>
+        sonarr
+      </a>
+      <a href="https://burglarr.bergermeister.at/radarr" class="button-small">
+        <span class="icon" style="background-image: url('https://raw.githubusercontent.com/Radarr/Radarr/8bef9b4da790da54b43708716de8f481bfb1b61a/Logo/Radarr.svg');"></span>
+        radarr
+      </a>
+      <a href="https://burglarr.bergermeister.at/lidarr" class="button-small">
+        <span class="icon" style="background-image: url('https://raw.githubusercontent.com/Lidarr/Lidarr/c7b8aa8a04e65890334369a7b7340526735f755a/Logo/Lidarr.svg');"></span>
+        lidarr
+      </a>
+      <a href="https://burglarr.bergermeister.at/prowlarr" class="button-small">
+        <span class="icon" style="background-image: url('https://raw.githubusercontent.com/Prowlarr/Prowlarr/fab74b58fae595519409f2f4944afdfc1f32ad8e/Logo/Prowlarr.svg');"></span>
+        prowlarr
+      </a>
+      <a href="https://burglarr.bergermeister.at/deluge" class="button-small">
+        <span class="icon" style="background-image: url('https://github.com/deluge-torrent/deluge/blob/develop/deluge/ui/web/icons/deluge-512.png?raw=true');"></span>
+        deluge
+      </a>
+    </body>
+    </html>
