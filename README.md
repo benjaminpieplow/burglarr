@@ -13,7 +13,7 @@ Burglarr is broken down into 3 deployments, which create the following 8 pods:
   - [Radar - Movies](https://wiki.servarr.com/radarr)
   - [Lidar - Music](https://wiki.servarr.com/lidarr)
   - ~~[Readarr - Books](https://wiki.servarr.com/readarr)~~ Cancelled
-  - [Whisparr - XXX](https://wiki.servarr.com/whisparr)
+  - ~~[Whisparr - XXX](https://wiki.servarr.com/whisparr)~~ My family sees this 🤦
   - [Prowlarr - Indexer](https://wiki.servarr.com/prowlarr)
   - [Ombi - Requests](https://docs.ombi.app/)
   - [Deluge - Data transfer](https://docs.linuxserver.io/images/docker-deluge/#version-tags)*
@@ -78,9 +78,11 @@ To connect the *arr apps to your media collection, modify `/deploy/infra/storage
 
 
 ### Configure DNS
-The *arr stack OOBEs very nicely, but it's [not possible](https://github.com/linuxserver/docker-sonarr/issues/118) to sideload reverse proxy configuration. This means it's impossible to configure the services if they're hidden behind a single-hostname proxy, so the initial setup _must_ be done by identifying the service in the FQDN, not URL (`sonar.foo.com` vs `foo.com/sonarr`). The easiest workaround I have found to this, is to give each service an Ingress of `*arr.burglarr.local`.
+The *arr stack OOBEs very nicely, but it's [not possible](https://github.com/linuxserver/docker-sonarr/issues/118) to sideload reverse proxy configuration. This means it's impossible to configure the services if they're hidden behind a single-hostname proxy, so the initial setup _must_ be done by identifying the service in the FQDN, not URL (`sonar.foo.com` vs `foo.com/sonarr`). The easiest workaround I have found to this, is to give each service an Ingress of `*arr.burglarr.local`. These are baked into the deployment, as you will _probably_ have to tweak stuff "in the backend" every once in a while (read: reconfigure a service from scratch)
 
-Ideally, set a wildcard `*.burglarr.local` to any node on your K8s cluster. If using the Windows host file, you will need to manually set each one as [.hosts does not support wildcards](https://superuser.com/questions/135595/using-wildcards-in-names-in-windows-hosts-file):
+Ideally, set a wildcard `*.burglarr.local` pointing to any node on your K8s cluster in your DNS.
+
+If using the Windows host file, you will need to manually set each one as [.hosts does not support wildcards](https://superuser.com/questions/135595/using-wildcards-in-names-in-windows-hosts-file):
 - sonarr.burglarr.local
 - radarr.burglarr.local
 
@@ -92,6 +94,7 @@ kubectl apply -f ./deploy/apps/radarr/
 kubectl apply -f ./deploy/apps/lidarr/
 kubectl apply -f ./deploy/apps/prowlarr/
 kubectl apply -f ./deploy/apps/deluge/
+kubectl apply -f ./deploy/apps/jellyfin/
 ```
 
 ### Sonarr
@@ -107,20 +110,27 @@ Once the app is online,
 3. Settings > General > URL Base: `/radarr`
 
 ### Lidarr
+Once the app is online,
+1. OOBE (popup auth recommended)
+2. Note API Key
+3. Settings > General > URL Base: `/lidarr`
+
+### Deluge
+Once the app is online,
+1. OOBE (set password)
+2. Install labels plugin
 
 ### Prowlarr
 Once the app is online,
 1. OOBE (popup auth recommended)
 2. Note API Key
 3. Settings > General > URL Base: `/prowlarr`
+4. Link other services
 
 When configuring links to other services, you can reference them by their K8s service name:
+
 ![sonar-service](./docs/prowlarr-service.png)
 
-### Deluge
-Once the app is online,
-1. OOBE (set password)
-2. Install labels plugin
 
 
 ## Plex (legacy)

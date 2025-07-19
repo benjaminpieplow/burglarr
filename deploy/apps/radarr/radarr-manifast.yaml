@@ -5,7 +5,13 @@ metadata:
   labels:
     app: radarr
 spec:
+  progressDeadlineSeconds: 600
   replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
   selector:
     matchLabels:
       app: radarr
@@ -17,17 +23,20 @@ spec:
       containers:
       - name: radarr
         image: linuxserver/radarr:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 7878
+          name: http-tcp
+          protocol: TCP
         env:
         - name: PUID
           value: "1000"
         - name: PGID
           value: "1000"
         - name: TZ
-          value: "UTC"
+          value: "CEST"
         volumeMounts:
-        - name: config
+        - name: radarr-config
           mountPath: /config
         - name: movies
           mountPath: /movies
@@ -42,12 +51,12 @@ spec:
             memory: "512Mi"
             cpu: "500m"
       volumes:
-      - name: config
+      - name: radarr-config
         persistentVolumeClaim:
           claimName: radarr-config
       - name: movies
         persistentVolumeClaim:
-          claimName: media-pvc
+          claimName: media-shared
       - name: downloads
         persistentVolumeClaim:
           claimName: downloads

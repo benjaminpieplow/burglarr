@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: lidarr
+  name: jellyfin
   labels:
-    app: lidarr
+    app: jellyfin
 spec:
   progressDeadlineSeconds: 600
   replicas: 1
@@ -14,74 +14,86 @@ spec:
     type: RollingUpdate
   selector:
     matchLabels:
-      app: lidarr
+      app: jellyfin
   template:
     metadata:
       labels:
-        app: lidarr
+        app: jellyfin
     spec:
       containers:
-      - name: lidarr
-        image: linuxserver/lidarr:latest
+      - name: jellyfin
+        image: jellyfin/jellyfin
         imagePullPolicy: Always
         ports:
-        - containerPort: 8686
+        - containerPort: 8096
           name: http-tcp
           protocol: TCP
+        # - containerPort: 8920
+        #   name: https-tcp
+        #   protocol: TCP
+        - containerPort: 1900
+          name: dlna-udp
+          protocol: UDP
+        - containerPort: 7359
+          name: discovery-udp
+          protocol: UDP
         env:
+        # - name: JELLYFIN_PublishedServerUrl 
+        #   value: xxx.xxx.xxx.xxx # The IP number for your jellyfin server (see service config)
         - name: PUID
           value: "1000"
         - name: PGID
           value: "1000"
         - name: TZ
           value: "CEST"
+        # securityContext:
+          # privileged: true # Container must run as privileged inside of the pod, required for hardware acceleration
         volumeMounts:
-        - name: config
+        - name: jellyfin-config
           mountPath: /config
-        - name: music
-          mountPath: /music
-          subPath: music
-        - name: downloads
-          mountPath: /downloads
+        - name: media
+          mountPath: /data
+        - name: jellyfin-cache
+          mountPath: /cache
         resources:
           requests:
             memory: "256Mi"
             cpu: "100m"
           limits:
-            memory: "512Mi"
+            memory: "1Gi"
             cpu: "500m"
+        stdin: true
+        tty: true
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
       volumes:
-      - name: config
+      - name: jellyfin-config
         persistentVolumeClaim:
-          claimName: lidarr-config
-      - name: music
+          claimName: jellyfin-config
+      - name: media
         persistentVolumeClaim:
           claimName: media-shared
-      - name: downloads
-        persistentVolumeClaim:
-          claimName: downloads
-      securityContext:
-        runAsUser: 1000
-        runAsGroup: 1000
-        fsGroup: 1000
+      - name: jellyfin-cache
+        emptyDir:
+          sizeLimit: 10Gi
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: lidarr-service
+  name: jellyfin-service
 spec:
   selector:
-    app: lidarr
+    app: jellyfin
   ports:
   - protocol: TCP
     port: 80
-    targetPort: 8686
+    targetPort: 8096
   type: ClusterIP
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: lidarr-ingress
+  name: jellyfin-ingress
   annotations:
     nginx.ingress.kubernetes.io/proxy-body-size: "0"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
@@ -89,13 +101,13 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: lidarr.burglarr.local
+  - host: jellyfin.burglarr.local
     http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: lidarr-service
+            name: jellyfin-service
             port:
               number: 80

@@ -5,7 +5,13 @@ metadata:
   labels:
     app: sonarr
 spec:
+  progressDeadlineSeconds: 600
   replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
   selector:
     matchLabels:
       app: sonarr
@@ -17,17 +23,20 @@ spec:
       containers:
       - name: sonarr
         image: linuxserver/sonarr:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8989
+          name: http-tcp
+          protocol: TCP
         env:
         - name: PUID
           value: "1000"
         - name: PGID
           value: "1000"
         - name: TZ
-          value: "UTC"
+          value: "CEST"
         volumeMounts:
-        - name: config
+        - name: sonarr-config
           mountPath: /config
         - name: tv
           mountPath: /tv
@@ -42,15 +51,15 @@ spec:
             memory: "512Mi"
             cpu: "500m"
       volumes:
-      - name: config
+      - name: sonarr-config
         persistentVolumeClaim:
           claimName: sonarr-config
       - name: tv
         persistentVolumeClaim:
-          claimName: media-pvc
+          claimName: media-shared
       - name: downloads
         persistentVolumeClaim:
-          claimName: sonarr-downloads
+          claimName: downloads
       securityContext:
         runAsUser: 1000
         runAsGroup: 1000

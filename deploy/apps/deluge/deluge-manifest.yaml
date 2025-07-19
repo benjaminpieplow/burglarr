@@ -5,7 +5,10 @@ metadata:
   labels:
     app: deluge
 spec:
+  progressDeadlineSeconds: 600
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: deluge
@@ -17,23 +20,27 @@ spec:
       containers:
       - name: deluge
         image: lscr.io/linuxserver/deluge:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8112
           name: webui
+          protocol: TCP
         - containerPort: 6881
           name: bittorrent-tcp
+          protocol: TCP
         - containerPort: 6881
           name: bittorrentt-udp
           protocol: UDP
         - containerPort: 58846
-          name: thinclient
+          name: thinclient-tcp
+          protocol: TCP
         env:
         - name: PUID
           value: "1000"
         - name: PGID
           value: "1000"
         - name: TZ
-          value: "UTC"
+          value: "CEST"
         volumeMounts:
         - name: config
           mountPath: /config

@@ -27,7 +27,7 @@ parameters:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: media-pvc
+  name: media-shared
 spec:
   accessModes:
     - ReadWriteMany
