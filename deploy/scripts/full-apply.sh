@@ -6,3 +6,5 @@ kubectl apply -f ./deploy/apps/lidarr/
 kubectl apply -f ./deploy/apps/prowlarr/
 kubectl apply -f ./deploy/apps/deluge/
 kubectl apply -f ./deploy/apps/jellyfin/
+kubectl apply -f ./deploy/apps/nginx/
+kubectl apply -f ./deploy/apps/ombi/

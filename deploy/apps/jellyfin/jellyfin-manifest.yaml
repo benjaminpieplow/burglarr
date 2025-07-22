@@ -8,10 +8,7 @@ spec:
   progressDeadlineSeconds: 600
   replicas: 1
   strategy:
-    rollingUpdate:
-      maxSurge: 1
-      maxUnavailable: 1
-    type: RollingUpdate
+    type: Recreate
   selector:
     matchLabels:
       app: jellyfin
@@ -57,11 +54,11 @@ spec:
           mountPath: /cache
         resources:
           requests:
-            memory: "256Mi"
-            cpu: "100m"
+            memory: "512Mi"
+            cpu: "2"
           limits:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: "2Gi"
+            cpu: "3.5"
         stdin: true
         tty: true
       dnsPolicy: ClusterFirst

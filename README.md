@@ -49,21 +49,29 @@ The **Kubernetes** involves deploying the cluster and associaetd resources. This
 Cluster creation/deployment is described in [Cluster-Deployment.md](/docs/Cluster-Deployment.md).
 
 ### Configure Config/Downloads Storage
-The cluster will need Persistent Volumes, explained [here](https://github.com/benjaminpieplow/automation/blob/main/kubernetes/KUBERNETES.md#add-cluster-storage). Follow that verbatim, and the deployments _should_ auto provision persistent storage for all the services'. Each app needs a `/config` directory, and many use the `/downloads` mount. These are split into different manifests:
+The cluster will need Persistent Volumes, explained [here](https://github.com/benjaminpieplow/automation/blob/main/kubernetes/KUBERNETES.md#add-cluster-storage). Follow that verbatim, and the deployments _should_ auto provision persistent storage for all the services'. Each app needs a `/config` directory, and many use the `/downloads` mount (also created using the cluster storage infra). Each service's storage configuration is split into different manifests:
 
-`deploy/infra/shared-storage.yaml` defines `downloads` and `media`, which should more-or-less lifecycle itself with the deployment (IE, if you nuke an app, they should persist). It _must_ be deployed before any apps will start:
+`deploy/infra/shared-storage.yaml` defines `downloads` and `media`, which should more-or-less lifecycle itself with the deployment (IE, if you nuke an app, they should persist). **This file must be customized and deployed before proceeding!** The `path` should line up with the base media folder (so, `/data/media/tv`, `path: /data/media`). Media Share file structure is covered below.
+
+Once you have entered your media server and path, deploy the shared storage to the cluster:
+
 ```
 kubectl apply -f ./deploy/infra/shared-storage.yaml
 ```
-Kubernetes has the ability to "overdefine"; I could have added a `downloads` PV/PVC to each App manifest, but this comes with the trade-off that if you `kubectl delete` the app, the storage goes with it, which is "not very cash money" when run against your media collection.
+You can now skip to **Configure Media Storage**; the rest of this section is theory.
+
+Kubernetes has the ability to "overdefine" shared resources (two deployments of the same object cause no issues); I could have added a `downloads` PV/PVC to each App manifest, but this comes with the trade-off that if you `kubectl delete` the app, the storage goes with it, which is "not very cash money" when you just want to restart a pod. For this reason, I split the app config from the rest of the workload.
 
 `deploy/apps/*arr/*arr-storage.yaml` defines the Persistent Volume Claims for the apps' configuration. If an app has to be rebuilt (database corruption, forgot password) this can be included in the `kubectl delete`.
 
 `deploy/apps/*arr/*arr-manifest.yaml` defines the Volumes for the app. If an app has to be redeployed (update, restart) a `kubectl delete` can be run against this manifest, without forcing a complete rebuild.
 
 ### Configure Media Storage
-Your media library must also be shared configured in `/deploy/infra/storage.yaml` (will port to helm later). A user with UID=1000 must have full control of the media collection. The file structure must look like this:
+Your media library must also be shared, and was configured in `/deploy/infra/storage.yaml` (I will port to helm eventually). This section describes how the share must be configured, or at least how I got it working.
 
+A user with UID=1000 must have full control of the media collection, I implemented this with an NFS-MapAll user (so as not to reset the permissions on the share).
+
+The file structure must look like this:
 ```
 media/
 ├─ ebooks/
@@ -74,25 +82,26 @@ media/
 
 Inside of that, the *arr service can _usually_ figure stuff out. Eventually, I will add support for more instances and expand `movies_4k` and `tv_fhd`; let's get it booting first.
 
-To connect the *arr apps to your media collection, modify `/deploy/infra/storage.yaml` with your file server/share info. The `path` should line up with the base media folder (so, `/data/media/tv`, `path: /data/media`).
-
 
 ### Configure DNS
 The *arr stack OOBEs very nicely, but it's [not possible](https://github.com/linuxserver/docker-sonarr/issues/118) to sideload reverse proxy configuration. This means it's impossible to configure the services if they're hidden behind a single-hostname proxy, so the initial setup _must_ be done by identifying the service in the FQDN, not URL (`sonar.foo.com` vs `foo.com/sonarr`). The easiest workaround I have found to this, is to give each service an Ingress of `*arr.burglarr.local`. These are baked into the deployment, as you will _probably_ have to tweak stuff "in the backend" every once in a while (read: reconfigure a service from scratch)
 
-Ideally, set a wildcard `*.burglarr.local` pointing to any node on your K8s cluster in your DNS.
-
-If using the Windows host file, you will need to manually set each one as [.hosts does not support wildcards](https://superuser.com/questions/135595/using-wildcards-in-names-in-windows-hosts-file):
+Ideally, set a wildcard `*.burglarr.local` pointing to any node on your K8s cluster in your DNS. Since most clients don't support that (eg. the [Windows host file](https://superuser.com/questions/135595/using-wildcards-in-names-in-windows-hosts-file)), you will need to manually set each one as :
 - sonarr.burglarr.local
 - radarr.burglarr.local
+- lidarr.burglarr.local
+- prowlarr.burglarr.local
+- deluge.burglarr.local
+- jellyfin.burglarr.local
+- ombi.burglarr.local
+
 
 ## Apps
 Each of the apps can be deployed "in one go", but I recommend doing them one at a time so errors can be addressed before they're repeated.
 
-There are (#todo) a few hard-coded settings that I was not able to massage into dynamic.
+There is exactly one (other, besides storage) hard-coded setting that I was not able to massage into a dynamic.
 
-`deploy/apps/nginx/nginx-manifest.yaml` -> Ingress -> Host: Set this to the FQDN used for incoming requests. I use OPNSense's NGINX, and they they [don't support](https://github.com/opnsense/plugins/issues/4396) rewriting this field, so ~~I~~ you have to adapt upstream to it.
-
+`deploy/apps/nginx/nginx-manifest.yaml` -> Ingress -> Host: Set this to the FQDN used for incoming requests, as they are set by the downstream proxy. I use OPNSense's NGINX, and they they [don't support](https://github.com/opnsense/plugins/issues/4396) rewriting this field, so ~~I~~ you have to adapt upstream to it. Once that is set, you are ready to deploy the stack:
 ```
 kubectl apply -f ./deploy/apps/sonarr/
 kubectl apply -f ./deploy/apps/radarr/
@@ -100,45 +109,71 @@ kubectl apply -f ./deploy/apps/lidarr/
 kubectl apply -f ./deploy/apps/prowlarr/
 kubectl apply -f ./deploy/apps/deluge/
 kubectl apply -f ./deploy/apps/jellyfin/
+kubectl apply -f ./deploy/apps/ombi/
 kubectl apply -f ./deploy/apps/nginx/
 ```
 
-### Sonarr
-Once the app is online,
-1. OOBE (popup auth recommended)
-2. Note API Key
-3. Settings > General > URL Base: `/sonarr`
+Now, we have to do app-specific configuratiton and pipe them all together. I have tried to make this as efficient/painless as possible.
 
-### Radarr
-Once the app is online,
-1. OOBE (popup auth recommended)
-2. Note API Key
-3. Settings > General > URL Base: `/radarr`
+### OOBE/Set proxy forward addresses
+Much of the integraiton config relies on the URLs, so this has to get done first. If your DNS magic worked and you used my K8s template, the apps should be available at http://APP.burglarr.local:31080/ so I will add those links.
 
-### Lidarr
-Once the app is online,
-1. OOBE (popup auth recommended)
-2. Note API Key
-3. Settings > General > URL Base: `/lidarr`
+For each app,
+- set a password
+- record API key in scratch notepad
+- set base URL: Settings > General > URL Base: `/sonarr` (or whichever app you're in):
+  - sonarr - http://sonarr.burglarr.local:31080/
+  - radarr - http://radarr.burglarr.local:31080/
+  - lidarr - http://lidarr.burglarr.local:31080/
+  - prowlarr - http://prowlarr.burglarr.local:31080/
+  - jellyfin - http://prowlarr.burglarr.local:31080/
+    - Skip OOBE, bee-line the baseurl
+    - The pod _may_ need a restart after this (or it needs a _hot_ minute), it took a few tries
+    - NGINX may also need some restarting
+    - Generate an API key, name "ombi" (not parsed)
+  - ombi - http://prowlarr.burglarr.local:31080/ombi
+    - Follow OOBE
+    - OOBE jellyfin integration does not work
+    - baseurl set by environment variable
+    - add libraries now, so import can get to work
+  - deluge - http://deluge.burglarr.local:31080/deluge
+    - set strong password (no API keys in Deluge), default is `deluge`
+    - install Labels plugin (stats recommended) -> this completes Deluge config
+    - baseurl done by HTTP header
 
-### Deluge
-Once the app is online,
-1. OOBE (set password)
-2. Install labels plugin
+
+
 
 ### Prowlarr
 Once the app is online,
-1. OOBE (popup auth recommended)
-2. Note API Key
-3. Settings > General > URL Base: `/prowlarr`
-4. Link other services
+- Link other services (note: use "APP-service" such as `sonarr-service` for host, and :80, see below)
+  - download service (deluge)
+  - apps (radarr, sonarr) lidarr appears broken
+  - indexers (caution: some may distribute illegal material)
+  - "Sync App Indexers" pushes the indexers to your *arr stack
 
 When configuring links to other services, you can reference them by their K8s service name:
 
 ![sonar-service](./docs/prowlarr-service.png)
 
-## Plex (legacy)
-Plex will be by far the easiest, as they already provide a [Helm chart](https://github.com/plexinc/pms-docker/tree/master/charts/plex-media-server) which I can use. On the first deployment, you will need to generate your `plex_values.yaml`.
+### *arr
+For each (radarr, sonarr, lidarr) service,
+- Configure media profiles
+  - Episode naming
+  - Profiles (if needed)
+  - Download Client -> Deluge (deluge-service:80)
+    - Radarr: do not use URLbase
+- Configure your library folders
+- Begin the tedious process of cleaning up your library
+
+### Jellyfin
+- Add libraries and scan
+
+# Legacy components
+Please ignore; this is just for archive
+
+## Plex 
+~~Plex will be by far the easiest, as they already provide a [Helm chart](https://github.com/plexinc/pms-docker/tree/master/charts/plex-media-server) which I can use. On the first deployment, you will need to generate your `plex_values.yaml`.~~ dead wrong.
 
 ```
 helm repo add plex https://raw.githubusercontent.com/plexinc/pms-docker/gh-pages

@@ -12,7 +12,7 @@ spec:
   storageClassName: media-nfs-class
   nfs:    # Edit these:
     server: "172.16.0.40" 
-    path: "/mnt/dev-data1/media-dev/"
+    path: "/mnt/prod-data1/public/Media"
 ---
 # Pin the media PVC to custom PV
 apiVersion: storage.k8s.io/v1
