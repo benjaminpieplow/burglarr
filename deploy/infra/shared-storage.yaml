@@ -1,0 +1,49 @@
+# Todo! Parameterize this.
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: media-pv
+spec:
+  capacity:
+    storage: 10Ti
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: media-nfs-class
+  nfs:    # Edit these:
+    server: "172.16.0.40" 
+    path: "/mnt/prod-data1/public/Media"
+---
+# Pin the media PVC to custom PV
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: media-nfs-class
+provisioner: cluster.local/nfs-subdir-external-provisioner
+parameters:
+  readOnly: "false"
+---
+# Media collection
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: media-shared
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: media-nfs-class
+  resources:
+    requests:
+      storage: 10Ti
+---
+# Downloads (shared)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: downloads
+spec:
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 500Gi

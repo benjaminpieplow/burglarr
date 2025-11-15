@@ -20,15 +20,7 @@ Following my own [guide](https://github.com/benjaminpieplow/automation/wiki/New-
 - Ignore the "Storage" part, we will build that below.
 
 ## Storage
-The setup guide guide describes creating a cluster Persistent Volume (PV) using NFS, which is horrendously insecure and does not allow us to access existing files. As such, we will need to configure 2 types of storage: **Persistent Volumes** for the configuration files of the various services, and **Mounts** for the media collections.
+The setup guide guide describes creating a cluster Persistent Volume (PV) using NFS, which is horrendously insecure but extremely functional. The storage manifest (`/deploy/infra/storage.yaml`) deploys a new storage class specifically for your media collection, all other stores (_including downloads_) use automatically provisioned volumes from the clustter setup. This is covered in more detail in the Deployment section
 
-### Persistent Volumes
-Through this project, I have updated the K8s OOBE to create dynamic persistent volumes on NFS shares; this saves me the administrative overhead of writing this documentation. They will "just work"...
-
-Except for Plex, which somehow managed to override the `Mapall User` set on the NAS, which did not happen in another similarly deployed workload. I have a user `3002` which I can grant the required rights on the NAS; it's hacky but it worked. I hate Linux file permissions. 
-
-### Mounts
-[Via](https://kubernetes.io/docs/concepts/storage/volumes/), these appear to be my options for getting my media library into Plex
-- [hostPath](https://kubernetes.io/docs/concepts/storage/volumes/#hostpath-volume-types)
-  - included as example in the helm chart (so likely how it's expected to be done)
-  - 
+## Network
+I equipped each K8s host with an additional NIC attached to an air-gapped data network. This might be incorporated into future templates, as it's part of the standard SARCASM network structure, but for now it must be done manually.
